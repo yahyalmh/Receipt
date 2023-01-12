@@ -111,10 +111,12 @@ fun ReceiptShimmerCell(
             Box(
                 modifier = modifier
                     .size(82.dp)
+                    .padding(5.dp)
                     .placeholder(
                         visible = true,
                         color = Color.LightGray,
                         highlight = PlaceholderHighlight.shimmer(Color.DarkGray),
+                        shape = RoundedCornerShape(15)
                     ),
             )
             Column(
