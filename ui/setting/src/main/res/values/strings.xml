@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setting">Setting</string>
+    <string name="theme">Theme</string>
+    <string name="checkIconDescription">Check Icon</string>
+</resources>
