@@ -37,6 +37,7 @@ android {
 }
 
 dependencies {
+    androidxCore()
     retrofit()
     hilt()
     junit4()

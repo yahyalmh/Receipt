@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    androidxCore()
     junit4()
     junit5()
     mockito()
@@ -52,6 +53,4 @@ dependencies {
     androidXTest()
     composeMaterial()
     permissions()
-
-//    moduleDependency(":data:common")
 }

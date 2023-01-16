@@ -34,6 +34,7 @@ android {
 }
 
 dependencies {
+    androidxCore()
     coroutines()
     gson()
     textRecognition()

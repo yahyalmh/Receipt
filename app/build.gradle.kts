@@ -57,6 +57,7 @@ android {
 
 
 dependencies {
+    androidxCore()
     compose()
     composeMaterial()
     composeNavigation()

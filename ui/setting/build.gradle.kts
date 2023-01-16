@@ -42,7 +42,7 @@ android {
 }
 
 dependencies {
-
+    androidxCore()
     compose()
     composeNavigation()
     composeViewModel()

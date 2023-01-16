@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
+    androidxCore()
     compose()
     composeNavigation()
     composeViewModel()
@@ -63,6 +64,9 @@ dependencies {
     firebaseStorage()
     coilCompose()
     placeholder()
+    gson()
+    textRecognition()
+
 
     moduleDependency(":data:common")
     moduleDependency(":data:firebase")
