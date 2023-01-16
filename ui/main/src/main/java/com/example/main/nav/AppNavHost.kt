@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import com.example.home.nav.homeGraph
-import com.example.home.nav.homeRoute
-import com.example.scan.nav.scanGraph
-import com.example.setting.nav.settingGraph
+import com.example.home.nav.HomeRoute.Companion.HOME_ROUTE
+import com.example.home.nav.HomeRoute.Companion.homeGraph
+import com.example.scan.nav.ScanRout.Companion.scanGraph
+import com.example.setting.nav.SettingRoute.Companion.settingGraph
 
 /**
  * @author yaya (@yahyalmh)
@@ -17,16 +17,15 @@ import com.example.setting.nav.settingGraph
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = homeRoute
+    startDestination: String = HOME_ROUTE
 ) {
-
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
     ) {
-        homeGraph(navController)
-        settingGraph(navController)
-        scanGraph(navController)
+        homeGraph()
+        settingGraph()
+        scanGraph()
     }
 }

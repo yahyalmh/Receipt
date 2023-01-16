@@ -1,4 +1,4 @@
-package com.example.scan
+package com.example.scan.camera
 
 import android.content.Context
 import android.util.Log

@@ -1,15 +1,12 @@
-package com.example.scan
+package com.example.scan.camera
 
 import android.Manifest
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.NavOptions
-import com.example.scan.nav.navigateToScanResult
+import com.example.scan.camera.CameraUiEvent.*
 import com.example.ui.common.component.icon.AppIcons
 import com.example.ui.common.component.screen.TopBarScaffold
 import com.example.ui.common.component.view.AutoRetryView
@@ -17,39 +14,26 @@ import com.example.ui.common.component.view.LoadingView
 import com.example.ui.common.component.view.PermissionView
 import com.example.ui.common.component.view.RetryView
 import com.example.ui.scan.R
-import com.google.mlkit.vision.common.InputImage
 
 @Composable
-fun ScanScreen(
+fun CameraScreen(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
-    viewModel: ScanViewModel = hiltViewModel()
+    viewModel: CameraViewModel = hiltViewModel()
 ) {
     ScanScreenContent(
         modifier = modifier,
         uiState = viewModel.state.value,
-        onNavigationBack = {
-            viewModel.onEvent(ScanUiEvent.NavigationBack)
-            navController.popBackStack()
-        },
-        onRetry = { viewModel.onEvent(ScanUiEvent.Retry) },
-        onPermissionGranted = { viewModel.onEvent(ScanUiEvent.PermissionGranted) },
-        onImageCaptured = { imageFileName ->
-            navController.navigateToScanResult(
-                imageFileName = imageFileName,
-                navOptions = NavOptions
-                    .Builder()
-                    .setPopUpTo(navController.currentDestination!!.route, true)
-                    .build()
-            )
-        },
+        onNavigationBack = { viewModel.onEvent(NavigationBack) },
+        onRetry = { viewModel.onEvent(Retry) },
+        onPermissionGranted = { viewModel.onEvent(PermissionGranted) },
+        onImageCaptured = { imageAddress -> viewModel.onEvent(ImageCaptured(imageAddress)) },
     )
 }
 
 @Composable
 fun ScanScreenContent(
     modifier: Modifier = Modifier,
-    uiState: ScanUiState,
+    uiState: CameraUiState,
     onNavigationBack: () -> Unit = {},
     onRetry: () -> Unit = {},
     onPermissionGranted: () -> Unit = {},

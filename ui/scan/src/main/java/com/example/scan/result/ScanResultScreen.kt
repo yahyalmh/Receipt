@@ -2,7 +2,9 @@ package com.example.scan
 
 import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_MASK
+import android.graphics.Typeface
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,22 +15,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.graphics.toRectF
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.example.scan.ScanResultUiEvent.*
-import com.example.scan.nav.scanRoute
+import com.example.scan.result.MLResult
+import com.example.scan.result.ScanResultUiEvent.*
+import com.example.scan.result.ScanResultUiState
+import com.example.scan.result.ScanResultViewModel
 import com.example.ui.common.component.icon.AppIcons
 import com.example.ui.common.component.screen.TopBarScaffold
 import com.example.ui.common.component.view.ThreeCircleLoadingView
 import com.example.ui.common.component.view.TwoOptionAlertDialog
-import com.example.ui.common.ext.popCurrentTo
 import com.example.ui.scan.R
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
@@ -37,7 +45,6 @@ import com.google.accompanist.placeholder.shimmer
 @Composable
 fun ScanResultScreen(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     viewModel: ScanResultViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.state.value
@@ -45,24 +52,16 @@ fun ScanResultScreen(
 
     ScanResultScreenContent(
         modifier = modifier,
-        navController = navController,
         uiState = uiState,
         onNavigationBack = { viewModel.onEvent(NavigationBack) },
         onSaveClick = {
             viewModel.onEvent(SaveReceipt(onImageSaved = {
                 viewModel.onEvent(NavigationBack)
-                navController.popBackStack()
                 showToast(context, "Image saved successfully")
             }))
         },
-        onRetakeClick = {
-            viewModel.onEvent(Retake)
-            navController.popCurrentTo(scanRoute)
-        },
-        onDiscardListener = {
-            viewModel.onEvent(DiscardReceipt)
-            navController.popBackStack()
-        },
+        onRetakeClick = { viewModel.onEvent(Retake) },
+        onDiscardListener = { viewModel.onEvent(DiscardReceipt) },
         onDismissListener = { viewModel.onEvent(DismissDialog) },
     )
 }
@@ -70,7 +69,6 @@ fun ScanResultScreen(
 @Composable
 fun ScanResultScreenContent(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     uiState: ScanResultUiState,
     onNavigationBack: () -> Unit,
     onSaveClick: () -> Unit,
@@ -162,7 +160,48 @@ private fun DataView(
                 firstButtonOnclick = { onRetakeClick() },
                 secondButtonOnclick = { onSaveClick() })
         }
+
+        DrawText(mlResult = mlResult)
     }
+}
+
+@Composable
+fun DrawText(modifier: Modifier = Modifier, mlResult: MLResult?) {
+    val textPaint = Paint().asFrameworkPaint().apply {
+        with(LocalDensity.current) {
+            isAntiAlias = true
+            textSize = 10.sp.toPx()
+            color = android.graphics.Color.BLUE
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        }
+    }
+
+    val de = LocalDensity.current
+
+    Canvas(
+        modifier = modifier
+            .zIndex(2f)
+            .fillMaxSize()
+            .background(Color.Transparent, RoundedCornerShape(10.dp)),
+        onDraw = {
+            drawIntoCanvas {
+                mlResult?.let { result ->
+                    result.text.textBlocks.forEach { t ->
+                        t.lines.forEach { l ->
+                            l.boundingBox?.toRectF()?.let { box ->
+                                it.nativeCanvas.drawText(
+                                    result.text.toString(),
+                                    box.left.div(de.density), // 120.dp.toPx(),            // x-coordinates of the origin (top left)
+                                    box.top.div(de.density), // 120.dp.toPx(), // y-coordinates of the origin (top left)
+                                    textPaint
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -242,7 +281,7 @@ private fun TwoButton(
 fun TwoButtonPreview() {
     TwoButton(isVisible = true,
         firstButtonText = "Discard",
-        secondButtonText = "Save",
+        secondButtonText = "Cancel",
         firstButtonOnclick = {},
         secondButtonOnclick = {})
 }
