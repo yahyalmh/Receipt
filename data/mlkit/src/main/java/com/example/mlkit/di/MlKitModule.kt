@@ -10,7 +10,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class)
+@InstallIn(ViewModelComponent::class)
 interface MlKitModule {
 
     @Binds
@@ -24,7 +24,6 @@ interface MlKitModule {
     ): LanguageIdInteractor
 
     @Binds
-    @Singleton
     fun bindTranslateInteractor(
         translateInteractorImpl: TranslateInteractorImpl
     ): TranslateInteractor

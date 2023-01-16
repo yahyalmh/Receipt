@@ -11,21 +11,21 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
+import dagger.hilt.android.components.ViewModelComponent
+import dagger.hilt.android.scopes.ViewModelScoped
 
 @Module
-@InstallIn(SingletonComponent::class)
+@InstallIn(ViewModelComponent::class)
 interface FirebaseModule {
     companion object {
         @Provides
-        @Singleton
+        @ViewModelScoped
         fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance().apply {
             firestoreSettings = FirebaseFirestoreSettings.Builder().build()
         }
 
         @Provides
-        @Singleton
+        @ViewModelScoped
         fun provideFirebaseStorageRef() = FirebaseStorage.getInstance()
     }
 
