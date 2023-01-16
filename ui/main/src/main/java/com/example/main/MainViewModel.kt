@@ -1,14 +1,9 @@
 package com.example.main
 
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.navOptions
+import androidx.navigation.NavHostController
 import com.example.datastore.DatastoreInteractor
-import com.example.home.nav.homeRoute
-import com.example.home.nav.navigateToHome
-import com.example.setting.nav.navigateToSetting
-import com.example.setting.nav.settingRoute
+import com.example.main.nav.MainRout
 import com.example.ui.common.*
 import com.example.ui.common.component.bar.BottomBarTab
 import com.example.ui.common.connectivity.ConnectivityMonitor
@@ -24,6 +19,8 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val connectivityMonitor: ConnectivityMonitor,
     private val datastoreInteractor: DatastoreInteractor,
+    val navController: NavHostController,
+    private val mainRout: MainRout,
 ) : BaseViewModel<MainUiState, MainUiEvent>(
     MainUiState.HideNetStatusView()
 ) {
@@ -98,35 +95,13 @@ class MainViewModel @Inject constructor(
 
     override fun onEvent(event: MainUiEvent) {
         when (event) {
-            is MainUiEvent.ChangeTab -> changeBottomBarDestination(
-                event.navController,
-                destination = event.destination
-            )
-        }
-    }
-
-    private fun changeBottomBarDestination(
-        navController: NavController,
-        destination: BottomBarTab
-    ) {
-        val id = navController.graph.findStartDestination().id
-        val navOptions = navOptions {
-            popUpTo(id) {
-//                saveState = true
-            }
-            launchSingleTop = true
-//            restoreState = true
-        }
-
-        when (destination.route) {
-            homeRoute -> navController.navigateToHome(navOptions)
-            settingRoute -> navController.navigateToSetting(navOptions)
+            is MainUiEvent.ChangeTab -> mainRout.setBottomBarDestination(event.destination)
         }
     }
 }
 
 sealed interface MainUiEvent : UIEvent {
-    class ChangeTab(val navController: NavController, val destination: BottomBarTab) : MainUiEvent
+    class ChangeTab(val destination: BottomBarTab) : MainUiEvent
 }
 
 sealed class MainUiState(
@@ -135,8 +110,6 @@ sealed class MainUiState(
     val themeType: ThemeType? = ThemeType.SYSTEM,
     val isBottomBarVisible: Boolean = true,
 ) : UIState {
-
-    object None : MainUiState(false, false)
 
     class HideNetStatusView(
         themeType: ThemeType? = null

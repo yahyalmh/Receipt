@@ -21,10 +21,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.home.nav.HomeRoute.Companion.HOME_ROUTE
 import com.example.main.nav.AppNavHost
-import com.example.home.nav.homeRoute
 import com.example.main.theme.AppTheme
-import com.example.setting.nav.settingRoute
+import com.example.setting.nav.SettingRoute.Companion.SETTING_ROUTE
 import com.example.ui.common.ThemeType
 import com.example.ui.common.component.bar.BottomAppBar
 import com.example.ui.common.component.bar.BottomBarTab
@@ -38,7 +38,6 @@ import com.example.ui.main.R
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.state.value
@@ -48,10 +47,10 @@ fun MainScreen(
         ContentView(
             modifier = modifier,
             uiState = uiState,
-            navController = navController,
+            navController = viewModel.navController,
             bottomBarTabs = bottomBarTabs()
         ) { tab ->
-            viewModel.onEvent(MainUiEvent.ChangeTab(navController, tab))
+            viewModel.onEvent(MainUiEvent.ChangeTab(tab))
         }
     }
 }
@@ -94,7 +93,7 @@ private fun ContentView(
 fun bottomBarTabs() = listOf(
     BottomBarTab(
         title = stringResource(id = R.string.home),
-        route = homeRoute,
+        route = HOME_ROUTE,
         selectedIcon = Icons.Default.Home,
         unselectedIcon = Icons.Default.Home,
         contentDescription = stringResource(id = R.string.homeTabContentDescription)
@@ -110,7 +109,7 @@ fun bottomBarTabs() = listOf(
 
     BottomBarTab(
         title = stringResource(id = R.string.setting),
-        route = settingRoute,
+        route = SETTING_ROUTE,
         selectedIcon = Icons.Default.Settings,
         unselectedIcon = Icons.Default.Settings,
         contentDescription = stringResource(id = R.string.settingTabContentDescription)
