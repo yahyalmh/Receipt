@@ -13,7 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import com.example.ui.common.ThemeType
 import com.example.ui.common.component.screen.TopBarScaffold
 import com.example.ui.common.component.view.*
@@ -21,7 +20,6 @@ import com.example.ui.common.component.view.*
 @Composable
 fun SettingScreen(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     viewModel: SettingViewModel = hiltViewModel()
 ) {
     SettingScreenContent(
