@@ -3,7 +3,6 @@ package com.example.home
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.ui.common.test.TestTag
 import com.example.ui.common.test.getString
@@ -24,8 +23,7 @@ internal class HomeScreenTest {
         with(composeTestRule) {
             setContent {
                 HomeScreenContent(
-                    navController = rememberNavController(),
-                    uiState = HomeUiState.Loading
+                    uiState = HomeUiState.Loading,
                 )
             }
             onNode(hasTestTag(TestTag.LOADING)).assertIsDisplayed()
@@ -37,8 +35,7 @@ internal class HomeScreenTest {
         with(composeTestRule) {
             setContent {
                 HomeScreenContent(
-                    navController = rememberNavController(),
-                    uiState = HomeUiState.Retry()
+                    uiState = HomeUiState.Retry(),
                 )
             }
             logTree()
@@ -53,8 +50,7 @@ internal class HomeScreenTest {
         with(composeTestRule) {
             setContent {
                 HomeScreenContent(
-                    navController = rememberNavController(),
-                    uiState = HomeUiState.AutoRetry()
+                    uiState = HomeUiState.AutoRetry(),
                 )
             }
             logTree()
@@ -70,8 +66,7 @@ internal class HomeScreenTest {
             val rates = exchangeRatesStub()
             setContent {
                 HomeScreenContent(
-                    navController = rememberNavController(),
-                    uiState = HomeUiState.Loaded(rates = rates, favoriteRates = rates.subList(0, 3))
+                    uiState = HomeUiState.Loaded(emptyList()),
                 )
             }
             logTree()

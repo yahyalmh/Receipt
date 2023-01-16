@@ -14,10 +14,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import com.example.data.common.model.dto.Photo
 import com.example.data.common.model.dto.ReceiptModel
-import com.example.scan.nav.navigateToScan
+import com.example.home.HomeUiEvent.OnFabClick
+import com.example.home.HomeUiEvent.Retry
 import com.example.ui.common.component.BaseLazyColumn
 import com.example.ui.common.component.icon.AppIcons
 import com.example.ui.common.component.screen.TopBarScaffold
@@ -29,23 +29,22 @@ import com.example.ui.home.R
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     HomeScreenContent(
         modifier = modifier,
-        navController = navController,
         uiState = viewModel.state.value,
-        onRetry = { viewModel.onEvent(HomeUiEvent.Retry) },
+        onRetry = { viewModel.onEvent(Retry) },
+        onFabClick = { viewModel.onEvent(OnFabClick) },
     )
 }
 
 @Composable
 fun HomeScreenContent(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
     uiState: HomeUiState,
     onRetry: () -> Unit = {},
+    onFabClick: () -> Unit = {},
 ) {
     TopBarScaffold(
         title = stringResource(id = R.string.home),
@@ -74,7 +73,7 @@ fun HomeScreenContent(
         DataView(
             isVisible = uiState.isLoaded,
             modifier = modifier.padding(padding),
-            onFabClick = { navController.navigateToScan() },
+            onFabClick = { onFabClick() },
             receiptModels = uiState.receipts,
         )
     }
@@ -111,7 +110,9 @@ private fun DataView(
     }
     Box(modifier = modifier.fillMaxSize()) {
         BaseLazyColumn(
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface),
             isVisible = isVisible,
             models = models
         )

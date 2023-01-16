@@ -5,6 +5,7 @@ import com.example.data.common.Result
 import com.example.data.common.model.ExchangeRate
 import com.example.data.common.model.dto.ReceiptModel
 import com.example.firestore.FirebaseInteractor
+import com.example.home.nav.HomeRoute
 import com.example.ui.common.BaseViewModel
 import com.example.ui.common.UIEvent
 import com.example.ui.common.UIState
@@ -28,6 +29,7 @@ import javax.inject.Inject
 open class HomeViewModel @Inject constructor(
     private val connectivityMonitor: ConnectivityMonitor,
     private val firebaseInteractor: FirebaseInteractor,
+    private val homeRoute: HomeRoute,
 ) : BaseViewModel<HomeUiState, HomeUiEvent>(HomeUiState.Loading) {
 
     init {
@@ -63,7 +65,7 @@ open class HomeViewModel @Inject constructor(
                         setState(HomeUiState.Loaded(it))
                     }
             }
-            is Result.Error -> throw(result.exception ?: IOException("Error"))
+            is Result.Error -> throw (result.exception ?: IOException("Error"))
         }
     }
 
@@ -71,9 +73,8 @@ open class HomeViewModel @Inject constructor(
     private fun handleAutoRetry(e: Throwable) = setState(HomeUiState.AutoRetry(e.message))
     override fun onEvent(event: HomeUiEvent) {
         when (event) {
-            HomeUiEvent.Retry -> {
-                setState(HomeUiState.Loading)
-            }
+            HomeUiEvent.Retry -> setState(HomeUiState.Loading)
+            HomeUiEvent.OnFabClick -> homeRoute.navigateToScan()
             else -> {}
         }
     }
@@ -100,5 +101,6 @@ sealed class HomeUiState(
 
 sealed interface HomeUiEvent : UIEvent {
     object Retry : HomeUiEvent
+    object OnFabClick : HomeUiEvent
     class OnFavorite(val rate: ExchangeRate) : HomeUiEvent
 }
