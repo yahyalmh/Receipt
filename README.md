@@ -1,5 +1,5 @@
 # Receipt
-This is a receipt converter app which is using google MLKit to extract text from an image, indentify language and translate it. 
+This is a receipt converter app which is using google MLKit to extract text from an image, identify language and translate it. 
 The app is designed based on google best practices and clean architecture. 
 
 ## Technologies
@@ -11,4 +11,5 @@ The app is designed based on google best practices and clean architecture.
 - Kotlin Flow
 - Firebase storage
 - Firestore
+- Google MLKit
 
