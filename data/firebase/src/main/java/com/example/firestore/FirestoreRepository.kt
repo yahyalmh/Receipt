@@ -7,22 +7,23 @@ import com.example.data.common.model.dto.ReceiptModel
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
 interface FirestoreRepository {
     suspend fun saveReceipt(receiptModel: ReceiptModel): Flow<Result<Boolean>>
-    suspend fun getAllReceipts(): SharedFlow<Result<List<DocumentSnapshot>>>
-    suspend fun observeFirestore(): SharedFlow<Result<List<DocumentSnapshot>>>
+    fun getAllReceipts(): Flow<Result<List<DocumentSnapshot>>>
+    fun observeFirestore(): Flow<Result<List<DocumentSnapshot>>>
 }
 
 class FirestoreRepositoryImpl @Inject constructor(
@@ -33,34 +34,30 @@ class FirestoreRepositoryImpl @Inject constructor(
     private val storagePhotosDirectoryName = "photos"
     private val savingFlow = MutableSharedFlow<Result<Boolean>>(extraBufferCapacity = 1)
 
-    override suspend fun observeFirestore() = coroutineScope {
-        val resultFlow = MutableSharedFlow<Result<List<DocumentSnapshot>>>(extraBufferCapacity = 1)
-        launch(Dispatchers.IO) {
-            firestore.collection(receiptCollectionName).addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                   resultFlow.tryEmit(Result.Error(e))
-                } else {
-                    snapshot?.let{
-                        resultFlow.tryEmit(Success(it.documents))
-                    }
+    override fun observeFirestore() = callbackFlow {
+        firestore.collection(receiptCollectionName).addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                trySend(Result.Error(e))
+            } else {
+                snapshot?.let {
+                    trySend(Success(it.documents))
                 }
             }
         }
-        resultFlow.asSharedFlow()
-    }
+        awaitClose()
+    }.flowOn(Dispatchers.IO)
 
-    override suspend fun getAllReceipts() = coroutineScope {
-        val resultFlow = MutableSharedFlow<Result<List<DocumentSnapshot>>>(extraBufferCapacity = 1)
-        launch(Dispatchers.IO) {
-            firestore.collection(receiptCollectionName).get().apply {
-                addOnSuccessListener {
-                    resultFlow.tryEmit(Success(it.documents))
-                }
-                addOnFailureListener { savingFlow.tryEmit(Result.Error(it)) }
+    override fun getAllReceipts() = callbackFlow<Result<List<DocumentSnapshot>>> {
+        firestore.collection(receiptCollectionName).get().apply {
+            addOnSuccessListener {
+                channel.trySend(Success(it.documents))
+            }
+            addOnFailureListener {
+                channel.trySend(Result.Error(it))
             }
         }
-        resultFlow.asSharedFlow()
-    }
+        awaitClose()
+    }.flowOn(Dispatchers.IO)
 
     override suspend fun saveReceipt(receiptModel: ReceiptModel) =
         coroutineScope {
@@ -85,7 +82,8 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     private fun uploadPhoto(documentRef: DocumentReference, receiptModel: ReceiptModel) {
         val photoLocalUri = Uri.fromFile(receiptModel.photo?.localUri?.let { File(it) })
-        val reference = firebaseStorage.reference.child("$storagePhotosDirectoryName/${photoLocalUri.lastPathSegment}")
+        val reference =
+            firebaseStorage.reference.child("$storagePhotosDirectoryName/${photoLocalUri.lastPathSegment}")
         // ToDo we can pause, cancel, resume the upload file process
         reference.putFile(photoLocalUri).continueWithTask { task ->
             if (!task.isSuccessful) {

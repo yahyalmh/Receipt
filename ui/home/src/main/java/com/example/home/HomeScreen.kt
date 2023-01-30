@@ -22,6 +22,7 @@ import com.example.ui.common.component.BaseLazyColumn
 import com.example.ui.common.component.icon.AppIcons
 import com.example.ui.common.component.screen.TopBarScaffold
 import com.example.ui.common.component.view.AutoRetryView
+import com.example.ui.common.component.view.EmptyView
 import com.example.ui.common.component.view.RetryView
 import com.example.ui.common.ext.create
 import com.example.ui.home.R
@@ -33,7 +34,7 @@ fun HomeScreen(
 ) {
     HomeScreenContent(
         modifier = modifier,
-        uiState = viewModel.state.value,
+        uiState = viewModel.state,
         onRetry = { viewModel.onEvent(Retry) },
         onFabClick = { viewModel.onEvent(OnFabClick) },
     )
@@ -59,14 +60,19 @@ fun HomeScreenContent(
 
         RetryView(
             isVisible = uiState.isRetry,
-            retryMessage = uiState.retryMsg,
+            retryMessage = uiState.retryMessage,
             icon = AppIcons.Warning,
             onRetry = onRetry
+        )
+        EmptyView(
+            isVisible = uiState.isEmpty,
+            icon = AppIcons.Search,
+            message = "Scan a receipt to convert it"
         )
 
         AutoRetryView(
             isVisible = uiState.isAutoRetry,
-            errorMessage = uiState.autoRetryMsg,
+            errorMessage = uiState.autoRetryMessage,
             icon = AppIcons.Warning,
         )
 

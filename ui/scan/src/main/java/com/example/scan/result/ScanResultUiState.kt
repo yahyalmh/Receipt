@@ -2,57 +2,66 @@ package com.example.scan.result
 
 import com.example.ui.common.UIState
 
-sealed class ScanResultUiState(
+open class ScanResultUiState(
     val isLoading: Boolean = false,
-    val loadingMessage: String = "Loading Image",
-    val isRetry: Boolean = false,
-    val retryMsg: String? = null,
-    val isAutoRetry: Boolean = false,
-    val autoRetryMsg: String? = null,
-    val isDiscardingReceipt: Boolean = false,
-    val isImageLoaded: Boolean = false,
-    val imageUri: String? = null,
-    val isMlResultReturned: Boolean = false,
+    val isDialogVisisble: Boolean = false,
+    val loadingMessage: String? = null,
+    val retryMessage: String? = null,
+    val autoRetryMessage: String? = null,
+    val imageAddress: String? = null,
     val mlResult: MLResult? = null,
 ) : UIState {
-    object Loading : ScanResultUiState(isLoading = false)
+    val isData: Boolean
+        get() = !this.isRetry && !this.isAutoRetry
+    val isRetry: Boolean
+        get() = this is Retry
+    val isAutoRetry: Boolean
+        get() = this is AutoRetry
 
-    class RetryUiState(retryMsg: String? = null) :
-        ScanResultUiState(isRetry = true, retryMsg = retryMsg)
-
-    class AutoRetry(autoRetryMsg: String? = null) :
-        ScanResultUiState(isAutoRetry = true, autoRetryMsg = autoRetryMsg)
-
-    class ProcessingImage(imageUri: String?) : ScanResultUiState(
-        imageUri = imageUri,
-        isImageLoaded = true,
-        isLoading = true,
-        loadingMessage = "Processing Image"
+    constructor(state: ScanResultUiState) : this(
+        state.isLoading,
+        state.isDialogVisisble,
+        state.loadingMessage,
+        state.retryMessage,
+        state.autoRetryMessage,
+        state.imageAddress,
+        state.mlResult
     )
 
-    class DialogUIState(
-        isVisible: Boolean, imageUri: String?, mlResult: MLResult?, isMlResultReturned: Boolean
-    ) : ScanResultUiState(
-        imageUri = imageUri,
-        isImageLoaded = true,
-        isDiscardingReceipt = isVisible,
-        mlResult = mlResult,
-        isMlResultReturned = isMlResultReturned
+    fun copy(
+        isLoading: Boolean = this.isLoading,
+        isDialog: Boolean = this.isDialogVisisble,
+        loadingMessage: String? = this.loadingMessage,
+        retryMessage: String? = this.retryMessage,
+        autoRetryMessage: String? = this.autoRetryMessage,
+        imageAddress: String? = this.imageAddress,
+        mlResult: MLResult? = this.mlResult,
+    ) = ScanResultUiState(
+        isLoading = isLoading,
+        isDialogVisisble = isDialog,
+        loadingMessage = loadingMessage,
+        retryMessage = retryMessage,
+        autoRetryMessage = autoRetryMessage,
+        imageAddress = imageAddress,
+        mlResult = mlResult
     )
 
-    class SaveImage(imageUri: String?, mlResult: MLResult?) : ScanResultUiState(
-        imageUri = imageUri,
-        isImageLoaded = true,
-        isLoading = true,
-        loadingMessage = "Saving Image",
-        mlResult = mlResult,
+    object Start : ScanResultUiState()
+    class Retry(state: ScanResultUiState) : ScanResultUiState(state)
+    class AutoRetry(state: ScanResultUiState) : ScanResultUiState(state)
+    class Dialog(state: ScanResultUiState) : ScanResultUiState(state)
+    class Loaded(state: ScanResultUiState) : ScanResultUiState(state)
+    class ProcessImage(state: ScanResultUiState) : ScanResultUiState(
+        state.copy(
+            isLoading = true,
+            loadingMessage = "Processing Image"
+        )
     )
 
-    class MLResultReceived(
-        result: MLResult, imageUri: String?
-    ) : ScanResultUiState(
-        isMlResultReturned = true,
-        imageUri = imageUri,
-        mlResult = result,
+    class SaveImage(state: ScanResultUiState) : ScanResultUiState(
+        state.copy(
+            isLoading = true,
+            loadingMessage = "Saving Image"
+        )
     )
 }

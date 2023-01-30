@@ -37,21 +37,16 @@ import com.example.ui.main.R
  */
 @Composable
 fun MainScreen(
-    modifier: Modifier = Modifier,
-    viewModel: MainViewModel = hiltViewModel()
+    modifier: Modifier = Modifier, viewModel: MainViewModel = hiltViewModel()
 ) {
-    val uiState = viewModel.state.value
-
-    val useDarkTheme = shouldUseDarkTheme(uiState.themeType)
-    AppTheme(useDarkTheme = useDarkTheme) {
+    AppTheme(useDarkTheme = shouldUseDarkTheme(viewModel.state.themeType)) {
         ContentView(
             modifier = modifier,
-            uiState = uiState,
+            uiState = viewModel.state,
             navController = viewModel.navController,
-            bottomBarTabs = bottomBarTabs()
-        ) { tab ->
-            viewModel.onEvent(MainUiEvent.ChangeTab(tab))
-        }
+            bottomBarTabs = bottomBarTabs(),
+            onNavigateToDestination = { tab -> viewModel.onEvent(MainUiEvent.ChangeTab(tab)) },
+        )
     }
 }
 
@@ -66,12 +61,11 @@ private fun ContentView(
     Column {
         ConnectivityStatusView(
             modifier = modifier,
-            isOnlineViewVisible = uiState.isOnlineViewVisible,
-            isOfflineViewVisible = uiState.isOfflineViewVisible
+            isVisible = uiState.isConnectivityStatusVisible,
+            isOnline = uiState.isOnline
         )
 
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
+        Scaffold(modifier = modifier.fillMaxSize(),
             contentColor = MaterialTheme.colorScheme.surface,
             bottomBar = {
                 AnimatedVisibility(visible = uiState.isBottomBarVisible) {
@@ -82,8 +76,7 @@ private fun ContentView(
                         currentDestination = navController.currentBackStackEntryAsState().value?.destination
                     )
                 }
-            }
-        ) { paddingValues ->
+            }) { paddingValues ->
             SetupAppNavHost(navController, paddingValues)
         }
     }
@@ -119,8 +112,7 @@ fun bottomBarTabs() = listOf(
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun SetupAppNavHost(
-    navHostController: NavHostController,
-    padding: PaddingValues = PaddingValues.Absolute()
+    navHostController: NavHostController, padding: PaddingValues = PaddingValues.Absolute()
 ) {
     AppNavHost(
         navController = navHostController,
@@ -131,44 +123,34 @@ private fun SetupAppNavHost(
 }
 
 @Composable
-fun shouldUseDarkTheme(themeType: ThemeType?): Boolean =
-    when (themeType) {
-        ThemeType.SYSTEM -> isSystemInDarkTheme()
-        ThemeType.LIGHT -> false
-        ThemeType.DARK -> true
-        else -> isSystemInDarkTheme()
-    }
-
-@Composable
-@Preview(
-    showSystemUi = false,
-    name = "OfflinePreview",
-    device = Devices.PHONE
-)
-fun OfflineContentPreview() {
-    val navController = rememberNavController()
-    ContentView(
-        uiState = MainUiState.Offline(),
-        bottomBarTabs = bottomBarTabs(),
-        navController = navController,
-        onNavigateToDestination = {}
-    )
+fun shouldUseDarkTheme(themeType: ThemeType?): Boolean = when (themeType) {
+    ThemeType.SYSTEM -> isSystemInDarkTheme()
+    ThemeType.LIGHT -> false
+    ThemeType.DARK -> true
+    else -> isSystemInDarkTheme()
 }
 
 @Composable
 @Preview(
-    showSystemUi = false,
-    name = "OnlinePreview",
-    device = Devices.PHONE,
-    uiMode = UI_MODE_NIGHT_YES
+    showSystemUi = false, name = "OfflinePreview", device = Devices.PHONE
+)
+fun OfflineContentPreview() {
+    val navController = rememberNavController()
+    ContentView(uiState = MainUiState.NetStatus(MainUiState(isOnline = false)),
+        bottomBarTabs = bottomBarTabs(),
+        navController = navController,
+        onNavigateToDestination = {})
+}
+
+@Composable
+@Preview(
+    showSystemUi = false, name = "OnlinePreview", device = Devices.PHONE, uiMode = UI_MODE_NIGHT_YES
 )
 fun OnlineContentPreview() {
     val navController = rememberNavController()
-    ContentView(
-        uiState = MainUiState.Online(),
+    ContentView(uiState = MainUiState.NetStatus(MainUiState(isOnline = true)),
         bottomBarTabs = bottomBarTabs(),
         navController = navController,
-        onNavigateToDestination = {}
-    )
+        onNavigateToDestination = {})
 }
 

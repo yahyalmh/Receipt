@@ -2,9 +2,12 @@ package com.example.home
 
 import androidx.lifecycle.viewModelScope
 import com.example.data.common.Result
-import com.example.data.common.model.ExchangeRate
 import com.example.data.common.model.dto.ReceiptModel
 import com.example.firestore.FirebaseInteractor
+import com.example.home.HomeUiState.Empty
+import com.example.home.HomeUiState.Loaded
+import com.example.home.HomeUiState.Loading
+import com.example.home.HomeUiState.Retry
 import com.example.home.nav.HomeRoute
 import com.example.ui.common.BaseViewModel
 import com.example.ui.common.UIEvent
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.*
 import javax.inject.Inject
 
 
@@ -30,7 +34,7 @@ open class HomeViewModel @Inject constructor(
     private val connectivityMonitor: ConnectivityMonitor,
     private val firebaseInteractor: FirebaseInteractor,
     private val homeRoute: HomeRoute,
-) : BaseViewModel<HomeUiState, HomeUiEvent>(HomeUiState.Loading) {
+) : BaseViewModel<HomeUiState, HomeUiEvent>(Loading) {
 
     init {
         fetchReceipts()
@@ -38,12 +42,11 @@ open class HomeViewModel @Inject constructor(
     }
 
     private fun fetchReceipts() {
-        viewModelScope.launch {
-            firebaseInteractor.getAllReceipts()
-                .onEach { handleData(it) }
-                .catch { handleRetry(it) }
-                .launchIn(viewModelScope)
-        }
+        Currency.getAvailableCurrencies()
+        firebaseInteractor.getAllReceipts()
+            .onEach { handleData(it) }
+            .catch { handleRetry(it) }
+            .launchIn(viewModelScope)
     }
 
     private fun observeStorage() {
@@ -62,45 +65,70 @@ open class HomeViewModel @Inject constructor(
                     .mapNotNull { document -> document.toObject(ReceiptModel::class.java) }
                     .sortedByDescending { it.photo?.timestamp }
                     .also {
-                        setState(HomeUiState.Loaded(it))
+                        if (it.isEmpty()) {
+                            setState(Empty)
+                        } else {
+                            setState(Loaded(state.copy(receipts = it)))
+                        }
                     }
             }
             is Result.Error -> throw (result.exception ?: IOException("Error"))
         }
     }
 
-    private fun handleRetry(e: Throwable) = setState(HomeUiState.Retry(retryMsg = e.message))
-    private fun handleAutoRetry(e: Throwable) = setState(HomeUiState.AutoRetry(e.message))
+    private fun handleRetry(e: Throwable) = setState(Retry(state.copy(retryMessage = e.message)))
+    private fun handleAutoRetry(e: Throwable) = setState(state.copy(autoRetryMessage = e.message))
     override fun onEvent(event: HomeUiEvent) {
         when (event) {
-            HomeUiEvent.Retry -> setState(HomeUiState.Loading)
+            HomeUiEvent.Retry -> setState(Loading)
             HomeUiEvent.OnFabClick -> homeRoute.navigateToScan()
             else -> {}
         }
     }
 }
 
-sealed class HomeUiState(
-    val isLoading: Boolean = false,
-    val isRetry: Boolean = false,
-    val retryMsg: String? = null,
-    val isAutoRetry: Boolean = false,
-    val autoRetryMsg: String? = null,
-    val isLoaded: Boolean = false,
+open class HomeUiState(
+    val retryMessage: String? = null,
+    val autoRetryMessage: String? = null,
     val receipts: List<ReceiptModel> = emptyList(),
 ) : UIState {
-    object Loading : HomeUiState(isLoading = true)
+    val isLoading: Boolean
+        get() = this is Loading
+    val isRetry: Boolean
+        get() = this is Retry
+    val isAutoRetry: Boolean
+        get() = this is AutoRetry
+    val isLoaded: Boolean
+        get() = this is Loaded
+    val isEmpty: Boolean
+        get() = this is Empty
 
-    class Retry(retryMsg: String? = null) : HomeUiState(isRetry = true, retryMsg = retryMsg)
+    constructor(state: HomeUiState) : this(
+        retryMessage = state.retryMessage,
+        autoRetryMessage = state.autoRetryMessage,
+        receipts = state.receipts
+    )
 
-    class AutoRetry(autoRetryMsg: String? = null) :
-        HomeUiState(isAutoRetry = true, autoRetryMsg = autoRetryMsg)
+    fun copy(
+        retryMessage: String? = this.retryMessage,
+        autoRetryMessage: String? = this.autoRetryMessage,
+        receipts: List<ReceiptModel> = this.receipts
+    ) = HomeUiState(
+        retryMessage = retryMessage,
+        autoRetryMessage = autoRetryMessage,
+        receipts = receipts
+    )
 
-    class Loaded(receipts: List<ReceiptModel>) : HomeUiState(isLoaded = true, receipts = receipts)
+
+    object Loading : HomeUiState()
+    object Empty : HomeUiState()
+    class Retry(state: HomeUiState) : HomeUiState(state)
+    class AutoRetry(state: HomeUiState) : HomeUiState(state)
+    class Loaded(state: HomeUiState) : HomeUiState(state)
 }
 
 sealed interface HomeUiEvent : UIEvent {
     object Retry : HomeUiEvent
     object OnFabClick : HomeUiEvent
-    class OnFavorite(val rate: ExchangeRate) : HomeUiEvent
+    object OnFavorite : HomeUiEvent
 }

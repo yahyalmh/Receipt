@@ -3,16 +3,25 @@ package com.example.main
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.example.datastore.DatastoreInteractor
+import com.example.main.MainUiState.BottomVisibleChange
+import com.example.main.MainUiState.NetStatus
+import com.example.main.MainUiState.SetAppTheme
+import com.example.main.MainUiState.Start
 import com.example.main.nav.MainRout
-import com.example.ui.common.*
+import com.example.ui.common.BaseViewModel
+import com.example.ui.common.SharedState
+import com.example.ui.common.ThemeType
+import com.example.ui.common.UIEvent
+import com.example.ui.common.UIState
 import com.example.ui.common.component.bar.BottomBarTab
 import com.example.ui.common.connectivity.ConnectivityMonitor
+import com.example.ui.common.toThemeType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -21,9 +30,7 @@ class MainViewModel @Inject constructor(
     private val datastoreInteractor: DatastoreInteractor,
     val navController: NavHostController,
     private val mainRout: MainRout,
-) : BaseViewModel<MainUiState, MainUiEvent>(
-    MainUiState.HideNetStatusView()
-) {
+) : BaseViewModel<MainUiState, MainUiEvent>(Start) {
     private var isAppLaunchedForFirstTime: Boolean = true
 
     init {
@@ -32,65 +39,36 @@ class MainViewModel @Inject constructor(
         observeConnectivityState()
     }
 
-    private fun observeBottomBarState() {
+    private fun observeBottomBarState() =
         SharedState.bottomBarVisible
             .distinctUntilChanged()
-            .onEach {
-                setState(
-                    MainUiState.BottomVisibleChange(
-                        state.value.isOnlineViewVisible,
-                        state.value.isOfflineViewVisible,
-                        isBottomBarVisible = it,
-                        themeType = state.value.themeType
-                    )
-                )
-            }.launchIn(viewModelScope)
-    }
+            .onEach { setState(BottomVisibleChange(state.copy(isBottomBarVisible = it))) }
+            .launchIn(viewModelScope)
 
     private fun observeAppTheme() {
         datastoreInteractor
             .getThemeType()
-            .onEach {
-                val themeType = it?.toThemeType()
-                setState(
-                    MainUiState.SetAppTheme(
-                        state.value.isOnlineViewVisible,
-                        state.value.isOfflineViewVisible,
-                        themeType
-                    )
-                )
-            }
+            .onEach { setState(SetAppTheme(state.copy(themeType = it?.toThemeType()))) }
             .launchIn(viewModelScope)
 
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeConnectivityState() {
         connectivityMonitor.isOnline
             .distinctUntilChanged()
-            .onEach { isOnline ->
-                if (isOnline) {
-                    handelOnlineState()
-                } else {
-                    setState(MainUiState.Offline(state.value.themeType))
-                }
+            .mapLatest { isOnline ->
+                val shouldShowNetStatus = (isAppLaunchedForFirstTime && isOnline).not()
+                setState(
+                    NetStatus(
+                        state.copy(
+                            isOnline = isOnline,
+                            isStatusVisible = shouldShowNetStatus
+                        )
+                    )
+                )
+                isAppLaunchedForFirstTime = false
             }.launchIn(viewModelScope)
-    }
-
-    private fun handelOnlineState() {
-        if (isAppLaunchedForFirstTime) {
-            isAppLaunchedForFirstTime = false
-            return
-        }
-        setState(MainUiState.Online(state.value.themeType))
-        hideOnlineViewAfterWhile()
-    }
-
-    private fun hideOnlineViewAfterWhile() {
-        val hideOnlineViewDelay: Long = 2000
-        viewModelScope.launch {
-            delay(hideOnlineViewDelay)
-            setState(MainUiState.HideNetStatusView(state.value.themeType))
-        }
     }
 
     override fun onEvent(event: MainUiEvent) {
@@ -104,49 +82,35 @@ sealed interface MainUiEvent : UIEvent {
     class ChangeTab(val destination: BottomBarTab) : MainUiEvent
 }
 
-sealed class MainUiState(
-    val isOnlineViewVisible: Boolean = false,
-    val isOfflineViewVisible: Boolean = false,
+open class MainUiState(
     val themeType: ThemeType? = ThemeType.SYSTEM,
     val isBottomBarVisible: Boolean = true,
+    val isOnline: Boolean = false,
+    val isConnectivityStatusVisible: Boolean = false,
 ) : UIState {
 
-    class HideNetStatusView(
-        themeType: ThemeType? = null
-    ) : MainUiState(
-        isOnlineViewVisible = false,
-        isOfflineViewVisible = false,
-        themeType = themeType
+    constructor(state: MainUiState) : this(
+        state.themeType,
+        state.isBottomBarVisible,
+        state.isOnline,
+        state.isConnectivityStatusVisible
     )
 
-    class Offline(
-        themeType: ThemeType? = null
-    ) : MainUiState(isOfflineViewVisible = true, themeType = themeType)
-
-    class Online(
-        themeType: ThemeType? = null
-    ) : MainUiState(isOnlineViewVisible = true, themeType = themeType)
-
-    class BottomVisibleChange(
-        isOnlineViewVisible: Boolean,
-        isOfflineViewVisible: Boolean,
-        isBottomBarVisible: Boolean,
-        themeType: ThemeType? = null
-    ) : MainUiState(
-        isOnlineViewVisible = isOnlineViewVisible,
-        isOfflineViewVisible = isOfflineViewVisible,
+    fun copy(
+        themeType: ThemeType? = this.themeType,
+        isBottomBarVisible: Boolean = this.isBottomBarVisible,
+        isOnline: Boolean = this.isOnline,
+        isStatusVisible: Boolean = this.isConnectivityStatusVisible,
+    ) = MainUiState(
+        themeType = themeType,
         isBottomBarVisible = isBottomBarVisible,
-        themeType = themeType
+        isOnline = isOnline,
+        isConnectivityStatusVisible = isStatusVisible,
     )
 
-    class SetAppTheme(
-        isOnlineViewVisible: Boolean,
-        isOfflineViewVisible: Boolean,
-        themeType: ThemeType? = null
-    ) : MainUiState(
-        isOnlineViewVisible = isOnlineViewVisible,
-        isOfflineViewVisible = isOfflineViewVisible,
-        themeType = themeType
-    )
+    object Start : MainUiState()
+    class NetStatus(state: MainUiState) : MainUiState(state)
+    class BottomVisibleChange(state: MainUiState) : MainUiState(state)
+    class SetAppTheme(state: MainUiState) : MainUiState(state)
 }
 

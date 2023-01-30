@@ -1,4 +1,4 @@
-package com.example.scan
+package com.example.scan.result
 
 import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_MASK
@@ -29,10 +29,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.graphics.toRectF
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.example.scan.result.MLResult
 import com.example.scan.result.ScanResultUiEvent.*
-import com.example.scan.result.ScanResultUiState
-import com.example.scan.result.ScanResultViewModel
 import com.example.ui.common.component.icon.AppIcons
 import com.example.ui.common.component.screen.TopBarScaffold
 import com.example.ui.common.component.view.ThreeCircleLoadingView
@@ -47,12 +44,10 @@ fun ScanResultScreen(
     modifier: Modifier = Modifier,
     viewModel: ScanResultViewModel = hiltViewModel()
 ) {
-    val uiState = viewModel.state.value
     val context = LocalContext.current
-
     ScanResultScreenContent(
         modifier = modifier,
-        uiState = uiState,
+        uiState = viewModel.state,
         onNavigationBack = { viewModel.onEvent(NavigationBack) },
         onSaveClick = {
             viewModel.onEvent(SaveReceipt(onImageSaved = {
@@ -88,7 +83,7 @@ fun ScanResultScreenContent(
         )
 
         TwoOptionAlertDialog(
-            isVisible = uiState.isDiscardingReceipt,
+            isVisible = uiState.isDialogVisisble,
             title = "Discard Receipt?",
             message = "If you go back, you will lose scanned receipt",
             confirmColor = Color.Red,
@@ -100,10 +95,10 @@ fun ScanResultScreenContent(
 
         DataView(
             modifier = modifier.padding(padding),
-            imagePath = uiState.imageUri,
+            imagePath = uiState.imageAddress,
             mlResult = uiState.mlResult,
-            isVisible = uiState.isMlResultReturned || uiState.isImageLoaded,
-            showTwoButton = uiState.isMlResultReturned,
+            isVisible = uiState.isData,
+            showTwoButton = uiState.isLoading.not(),
             onRetakeClick = onRetakeClick,
             onSaveClick = onSaveClick
         )
@@ -123,46 +118,44 @@ private fun DataView(
     onRetakeClick: () -> Unit,
     onSaveClick: () -> Unit,
 ) {
-    if (isVisible) {
-        var isImageLoading by remember { mutableStateOf(true) }
-
-        Column {
-            Column(
-                modifier = modifier
-                    .verticalScroll(rememberScrollState())
-                    .weight(1f)
-            ) {
-                AsyncImage(modifier = Modifier
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(15.dp))
-                    .fillMaxWidth()
-                    .placeholder(
-                        visible = isImageLoading,
-                        color = Color.LightGray,
-                        highlight = PlaceholderHighlight.shimmer(Color.DarkGray),
-                        shape = RoundedCornerShape(15),
-                    )
-                    .aspectRatio(16f / 9f),
-                    model = imagePath,
-                    contentScale = ContentScale.FillBounds,
-                    contentDescription = "receipt image",
-                    onSuccess = { isImageLoading = false })
-                mlResult?.let {
-                    TextWithDescription(title = "Language ID", description = it.languageId)
-                    TextWithDescription(title = "Scanned Text", description = it.text.text)
-                    TextWithDescription(title = "Translated Text", description = it.translate)
-                }
+    if (isVisible.not()) return
+    var isImageLoading by remember { mutableStateOf(true) }
+    Column {
+        Column(
+            modifier = modifier
+                .verticalScroll(rememberScrollState())
+                .weight(1f)
+        ) {
+            AsyncImage(modifier = Modifier
+                .padding(8.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .fillMaxWidth()
+                .placeholder(
+                    visible = isImageLoading,
+                    color = Color.LightGray,
+                    highlight = PlaceholderHighlight.shimmer(Color.DarkGray),
+                    shape = RoundedCornerShape(15),
+                )
+                .aspectRatio(16f / 9f),
+                model = imagePath,
+                contentScale = ContentScale.FillBounds,
+                contentDescription = "receipt image",
+                onSuccess = { isImageLoading = false })
+            mlResult?.let {
+                TextWithDescription(title = "Language ID", description = it.languageId)
+                TextWithDescription(title = "Scanned Text", description = it.text.text)
+                TextWithDescription(title = "Translated Text", description = it.translate)
             }
-
-            TwoButton(isVisible = showTwoButton,
-                firstButtonText = "Retake",
-                secondButtonText = "Save",
-                firstButtonOnclick = { onRetakeClick() },
-                secondButtonOnclick = { onSaveClick() })
         }
 
-        DrawText(mlResult = mlResult)
+        TwoButton(isVisible = showTwoButton,
+            firstButtonText = "Retake",
+            secondButtonText = "Save",
+            firstButtonOnclick = { onRetakeClick() },
+            secondButtonOnclick = { onSaveClick() })
     }
+
+    DrawText(mlResult = mlResult)
 }
 
 @Composable

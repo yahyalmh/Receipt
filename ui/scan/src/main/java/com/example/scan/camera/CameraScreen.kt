@@ -22,7 +22,7 @@ fun CameraScreen(
 ) {
     ScanScreenContent(
         modifier = modifier,
-        uiState = viewModel.state.value,
+        uiState = viewModel.state,
         onNavigationBack = { viewModel.onEvent(NavigationBack) },
         onRetry = { viewModel.onEvent(Retry) },
         onPermissionGranted = { viewModel.onEvent(PermissionGranted) },

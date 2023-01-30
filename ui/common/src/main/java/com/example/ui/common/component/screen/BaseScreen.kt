@@ -36,7 +36,7 @@ fun BaseScreen(
     onRetry: () -> Unit = {},
     contentView: @Composable () -> Unit = {},
 ) {
-    val uiState = viewModel.state.value
+    val uiState = viewModel.state
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,

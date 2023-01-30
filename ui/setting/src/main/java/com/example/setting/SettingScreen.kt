@@ -24,7 +24,7 @@ fun SettingScreen(
 ) {
     SettingScreenContent(
         modifier = modifier,
-        uiState = viewModel.state.value,
+        uiState = viewModel.state,
         onChangeTheme = { viewModel.onEvent(SettingUiEvent.ChangeTheme(it)) }
     )
 }

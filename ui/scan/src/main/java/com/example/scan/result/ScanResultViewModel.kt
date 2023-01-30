@@ -40,49 +40,41 @@ class ScanResultViewModel @Inject constructor(
     private val firebaseInteractor: FirebaseInteractor,
     @ApplicationContext private val appContext: Context,
     private val scanRout: ScanRout,
-) : BaseViewModel<ScanResultUiState, ScanResultUiEvent>(Loading) {
+) : BaseViewModel<ScanResultUiState, ScanResultUiEvent>(Start) {
     private val scanResultArgs = ScanRout.ScanResultArgs(savedStateHandle)
     private val imageFile by lazy { File(appContext.filesDir, scanResultArgs.imageAddress) }
 
     init {
-        processImage()
         setBottomBarVisibility(false)
-    }
-
-    private fun processImage() {
         viewModelScope.launch {
             val image = loadImage()
-            setState(ProcessingImage(imageFile.absolutePath))
-            textRecognitionInteractor.recognizeText(InputImage.fromBitmap(image, 0))
-                .mapLatest {
-                    val sourceLang = languageIdInteractor.identifyLanguage(text = it.text).first()
-                    val translatedText =
-                        translateInteractor.translate(it.text, sourceLang, "en").first()
-
-                    MLResult(it, sourceLang, translatedText)
-                }.onEach {
-                    setState(MLResultReceived(it, state.value.imageUri))
-                }.catch { e -> handleError(e) }.launchIn(viewModelScope)
+            processImage(image)
         }
     }
 
-    private fun handleError(e: Throwable) = setState(RetryUiState())
-
-    private suspend fun loadImage(): Bitmap =
-        withContext(viewModelScope.coroutineContext + Dispatchers.IO) {
+    private suspend fun loadImage(): Bitmap {
+        return withContext(Dispatchers.IO) {
             BitmapFactory.decodeFile(imageFile.absolutePath)
         }
-
-    override fun onEvent(event: ScanResultUiEvent) {
-        when (event) {
-            Retry -> {}
-            Retake -> handleRetake()
-            DiscardReceipt -> finishScanning()
-            is SaveReceipt -> saveReceipt(event.onImageSaved)
-            DismissDialog -> setDialogState(isDialogVisible = false)
-            NavigationBack -> setDialogState(isDialogVisible = true)
-        }
     }
+
+    private fun processImage(image: Bitmap) {
+        textRecognitionInteractor
+            .recognizeText(InputImage.fromBitmap(image, 0))
+            .onStart { setState(ProcessImage(state.copy(imageAddress = imageFile.absolutePath))) }
+            .mapLatest {
+                val sourceLang = languageIdInteractor.identifyLanguage(text = it.text).first()
+                val translatedText =
+                    translateInteractor.translate(it.text, sourceLang, "en").first()
+
+                MLResult(it, sourceLang, translatedText)
+            }
+            .onEach { setState(Loaded(state.copy(mlResult = it, isLoading = false))) }
+            .catch { e -> handleError(e) }
+            .launchIn(viewModelScope)
+    }
+
+    private fun handleError(e: Throwable) = setState(ScanResultUiState.Retry(state = state))
 
     private fun finishScanning() {
         setBottomBarVisibility(true)
@@ -94,17 +86,6 @@ class ScanResultViewModel @Inject constructor(
         scanRout.navigateToCameraScreen()
     }
 
-    private fun setDialogState(isDialogVisible: Boolean) {
-        setState(
-            DialogUIState(
-                isVisible = isDialogVisible,
-                imageUri = state.value.imageUri,
-                mlResult = state.value.mlResult,
-                isMlResultReturned = state.value.isMlResultReturned
-            )
-        )
-    }
-
     private fun setBottomBarVisibility(isVisible: Boolean) {
         viewModelScope.launch {
             SharedState.bottomBarVisible.emit(isVisible)
@@ -112,9 +93,10 @@ class ScanResultViewModel @Inject constructor(
     }
 
     private fun saveReceipt(onImageSaved: () -> Unit) = viewModelScope.launch {
-        setState(SaveImage(state.value.imageUri, mlResult = state.value.mlResult))
-        state.value.mlResult?.let {
-            firebaseInteractor.saveReceipts(it.toReceiptModel(imageFile.absolutePath))
+        state.mlResult?.let {
+            firebaseInteractor
+                .saveReceipts(it.toReceiptModel(imageFile.absolutePath))
+                .onStart { setState(SaveImage(state)) }
                 .onEach { result ->
                     when (result) {
                         is Success -> {
@@ -123,7 +105,20 @@ class ScanResultViewModel @Inject constructor(
                         }
                         is Error -> throw (result.exception ?: IOException("Error"))
                     }
-                }.catch { e -> handleError(e) }.launchIn(viewModelScope)
+                }
+                .catch { e -> handleError(e) }
+                .launchIn(viewModelScope)
+        }
+    }
+
+    override fun onEvent(event: ScanResultUiEvent) {
+        when (event) {
+            ScanResultUiEvent.Retry -> {}
+            Retake -> handleRetake()
+            DiscardReceipt -> finishScanning()
+            is SaveReceipt -> saveReceipt(event.onImageSaved)
+            DismissDialog -> setState(Dialog(state.copy(isDialog = false)))
+            NavigationBack -> setState(Dialog(state.copy(isDialog = true)))
         }
     }
 
