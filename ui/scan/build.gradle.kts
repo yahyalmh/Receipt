@@ -1,8 +1,8 @@
 plugins {
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
+    androidLibrary()
+    kotlinAndroid()
     kotlin("kapt")
-    id("com.google.dagger.hilt.android")
+    hiltPlugin()
 }
 
 android {
